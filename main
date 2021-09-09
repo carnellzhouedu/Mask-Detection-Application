@@ -1,0 +1,112 @@
+import cv2
+import numpy as np
+from PIL import Image, ImageOps
+import mediapipe as mp
+import tensorflow.keras
+import math
+
+# Load the saved model
+np.set_printoptions(suppress=True)
+mp_face_detection = mp.solutions.face_detection
+mp_pose = mp.solutions.pose
+pose = mp_pose.Pose()
+mp_drawing = mp.solutions.drawing_utils
+
+model = tensorflow.keras.models.load_model('/Users/danielxu/Desktop/keras_model.h5')
+cap = cv2.VideoCapture(0)
+data = np.ndarray(shape=(1, 224, 224, 3), dtype=np.float32)
+nose = [0, 0]
+mouth = [0, 0]
+count = 0
+mask = ''
+
+with mp_face_detection.FaceDetection(
+        min_detection_confidence=0.5) as face_detection:
+    while True:
+        success, image = cap.read()
+        image.flags.writeable = False
+        results = face_detection.process(image)
+        result2 = pose.process(image)
+        image.flags.writeable = True
+        if results.detections:
+            for id, detection in enumerate(results.detections):
+                # bounding box
+                bbox1 = detection.location_data.relative_bounding_box
+                height, width, channel = image.shape
+                bbox = int((bbox1.xmin * width)), int((bbox1.ymin * height)), \
+                       int(bbox1.width * width), int(bbox1.height * height)
+                center = (int(bbox[0] + (bbox[2]/2)), int(bbox[1] + (bbox[3]/2)))
+                r = (center[0] - bbox[2])
+                t = (center[1] - bbox[3])
+                l = (center[0] + bbox[2])
+                b = (center[1] + bbox[3])
+                video = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+                im = Image.fromarray(video, 'RGB')
+                im = im.crop((r, t, l, b))
+                im = im.resize((224, 224))
+                # im.show()
+                img_array = np.asarray(im)
+                img_array = np.expand_dims(img_array, axis=0)
+                final = (img_array.astype(np.float32) / 127.0) - 1
+                prediction = model.predict(final)
+                # print(prediction)
+                # cv2.circle(image, center, 5, (255, 0, 255), 2)
+
+                # cv2.rectangle(image, bbox, (0, 0, 255), 2)
+                if prediction[0][0] >= prediction[0][1]:
+                    count += 1
+                    if count > 5:
+                        mask = 'Mask'
+                else:
+                    count -=1
+                    if count < -5:
+                        mask = 'No Mask'
+                cv2.putText(image, mask, (r, t), cv2.FONT_HERSHEY_PLAIN,
+                            3, (0, 0, 255), 3)
+                cv2.putText(image, 'Face', (l, b), cv2.FONT_HERSHEY_PLAIN,
+                            3, (0, 0, 255), 3)
+        elif result2.pose_landmarks:
+            for id, lm in enumerate(result2.pose_landmarks.landmark):
+                h, w, c = image.shape
+                cx, cy = int(lm.x * w), int(lm.y * h)
+                if id == 0:
+                    nose = [cx, cy]
+                if id == 10:
+                    mouth = [cx, cy]
+            #cv2.circle(img, nose, 5, (255, 0, 255), 2)
+            leng = math.hypot(nose[0] - mouth[0], nose[1] - mouth[1])
+            r = nose[0] - (5 * leng)
+            t = nose[1] - (5 * leng)
+            l = nose[0] + (5 * leng)
+            b = nose[1] + (4 * leng)
+            video = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+            im = Image.fromarray(video, 'RGB')
+            im = im.crop((r, t, l, b))
+            im = im.resize((224, 224))
+            #im.show()
+            img_array = np.asarray(im)
+            img_array = np.expand_dims(img_array, axis=0)
+            final = (img_array.astype(np.float32) / 127.0) - 1
+            prediction = model.predict(final)
+            if prediction[0][0] >= prediction[0][1]:
+                count += 1
+                if count > 5:
+                    mask = 'Mask'
+            else:
+                count -= 1
+                if count < -5:
+                    mask = 'No Mask'
+            cv2.putText(image, mask, (int(r), int(t)), cv2.FONT_HERSHEY_PLAIN,
+                                    3, (0, 0, 255), 3)
+            cv2.putText(image, 'Pose', (int(l), int(b)), cv2.FONT_HERSHEY_PLAIN,
+                        3, (0, 0, 255), 3)
+        else:
+            print("No face")
+
+        cv2.imshow("Image", image)
+        key = cv2.waitKey(1)
+        if key == 27:
+            cap.release()
+            cv2.destroyAllWindows()
+            exit()
+
