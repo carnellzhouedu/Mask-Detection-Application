@@ -44,15 +44,12 @@ with mp_face_detection.FaceDetection(
                 im = Image.fromarray(video, 'RGB')
                 im = im.crop((r, t, l, b))
                 im = im.resize((224, 224))
-                # im.show()
+
                 img_array = np.asarray(im)
                 img_array = np.expand_dims(img_array, axis=0)
                 final = (img_array.astype(np.float32) / 127.0) - 1
                 prediction = model.predict(final)
-                # print(prediction)
-                # cv2.circle(image, center, 5, (255, 0, 255), 2)
 
-                # cv2.rectangle(image, bbox, (0, 0, 255), 2)
                 if prediction[0][0] >= prediction[0][1]:
                     count += 1
                     if count > 5:
@@ -73,7 +70,7 @@ with mp_face_detection.FaceDetection(
                     nose = [cx, cy]
                 if id == 10:
                     mouth = [cx, cy]
-            #cv2.circle(img, nose, 5, (255, 0, 255), 2)
+
             leng = math.hypot(nose[0] - mouth[0], nose[1] - mouth[1])
             r = nose[0] - (5 * leng)
             t = nose[1] - (5 * leng)
@@ -83,7 +80,7 @@ with mp_face_detection.FaceDetection(
             im = Image.fromarray(video, 'RGB')
             im = im.crop((r, t, l, b))
             im = im.resize((224, 224))
-            #im.show()
+            
             img_array = np.asarray(im)
             img_array = np.expand_dims(img_array, axis=0)
             final = (img_array.astype(np.float32) / 127.0) - 1
