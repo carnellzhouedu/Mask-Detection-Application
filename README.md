@@ -1,1 +1,1 @@
-# MaskDetectionApplication
+A Mask Detection Application using OpenCV and Python. Used libraries and platforms such as OpenCV, Pillow, TensorFlow, Keras and frameworks such as MediaPipe to detect whether ~2 individuals from a faraway distances and 2+ individuals from close distances are wearing masks in real time. 
